@@ -190,10 +190,19 @@ func (s *MediaService) UploadStream(ctx context.Context, reviewID string, r io.R
 		if errors.As(err, &putErr) {
 			uploadErr.ProviderCode, uploadErr.Fix = putErr.code, putErr.fix
 		}
-		// Free the slot now rather than at the cleanup after expiry (best effort).
-		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		// Before freeing the slot, ask whether the upload completed after all: another call with
+		// the same client upload id may have PUT and completed this media item, and deleting it
+		// would invalidate that caller's result. Complete is idempotent: it answers the ready
+		// media then, or upload_not_found when no bytes ever landed, the one case to delete.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
-		_, _ = s.Delete(cleanup, reviewID, intent.Media.ID, cfg.callOptions...)
+		media, completeErr := s.Complete(cleanup, reviewID, intent.Media.ID, cfg.callOptions...)
+		if completeErr == nil && media.Status == MediaReady {
+			return media, nil
+		}
+		if IsCode(completeErr, CodeUploadNotFound) {
+			_, _ = s.Delete(cleanup, reviewID, intent.Media.ID, cfg.callOptions...)
+		}
 		return nil, uploadErr
 	}
 	media, err := s.Complete(ctx, reviewID, intent.Media.ID, cfg.callOptions...)

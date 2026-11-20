@@ -28,7 +28,9 @@ type fakeServer struct {
 	putAnswers []func(http.ResponseWriter)
 	deleted    []string
 	completeAt int
-	intents    []map[string]any
+	// completeAnswer replaces the default ready answer to complete when set.
+	completeAnswer func(http.ResponseWriter)
+	intents        []map[string]any
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -65,7 +67,12 @@ func newFakeServer(t *testing.T) *fakeServer {
 		case strings.HasSuffix(r.URL.Path, "/complete"):
 			f.mu.Lock()
 			f.completeAt++
+			answer := f.completeAnswer
 			f.mu.Unlock()
+			if answer != nil {
+				answer(w)
+				return
+			}
 			_, _ = io.WriteString(w, `{"data": {"id": "m-1", "status": "ready", "url": "https://cdn/m-1.png"}}`)
 		case r.Method == http.MethodDelete:
 			f.mu.Lock()
@@ -147,8 +154,14 @@ func TestAFailedPutIsRetriedFromTheStart(t *testing.T) {
 	}
 }
 
+func uploadNotFound(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusConflict)
+	_, _ = io.WriteString(w, `{"error": {"code": "upload_not_found", "message": "No uploaded file was found.", "details": {}, "request_id": null, "doc_url": "", "retryable": false}}`)
+}
+
 func TestATerminalPutFailureExplainsAndCleansUp(t *testing.T) {
 	f := newFakeServer(t)
+	f.completeAnswer = uploadNotFound // no bytes landed: the only case that deletes
 	f.putAnswers = []func(http.ResponseWriter){func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = io.WriteString(w, `<?xml version="1.0"?><Error><Code>SignatureDoesNotMatch</Code><Message>no</Message></Error>`)
@@ -169,6 +182,7 @@ func TestATerminalPutFailureExplainsAndCleansUp(t *testing.T) {
 
 func TestRedirectsAreNeverFollowed(t *testing.T) {
 	f := newFakeServer(t)
+	f.completeAnswer = uploadNotFound
 	f.putAnswers = []func(http.ResponseWriter){func(w http.ResponseWriter) {
 		w.Header().Set("Location", "https://elsewhere.example/steal")
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -198,5 +212,34 @@ func TestACompleteRejectionReportsItsStage(t *testing.T) {
 	if !errors.As(err, &uploadErr) || uploadErr.Stage != StageComplete || !IsCode(err, CodeMediaRejected) ||
 		strings.Join(uploadErr.RequestIDs, ",") != "req-intent,req-complete" {
 		t.Fatalf("got %#v", err)
+	}
+}
+
+func TestAFailedPutNeverDeletesMediaAnotherCallCompleted(t *testing.T) {
+	// Two helpers share a client upload id; the other one PUT and completed first, so this PUT
+	// meets upload_already_completed. The media is ready: return it, delete nothing.
+	f := newFakeServer(t)
+	f.putAnswers = []func(http.ResponseWriter){func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = io.WriteString(w, `{"error": {"code": "upload_already_completed", "message": "done", "details": {}, "request_id": null, "doc_url": "", "retryable": false}}`)
+	}}
+	media, err := f.client(t).Media.UploadBytes(context.Background(), "r-1", []byte("png"), "image/png", WithClientUploadID("shared"))
+	if err != nil || media.Status != MediaReady || len(f.deleted) != 0 {
+		t.Fatalf("got %v, %v; deleted %v", media, err, f.deleted)
+	}
+}
+
+func TestAFailedPutKeepsTheRowWhenCompleteCannotTell(t *testing.T) {
+	f := newFakeServer(t)
+	f.putAnswers = []func(http.ResponseWriter){func(w http.ResponseWriter) { w.WriteHeader(http.StatusForbidden) }}
+	f.completeAnswer = func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusConflict)
+		_, _ = io.WriteString(w, `{"error": {"code": "upload_expired", "message": "expired", "details": {}, "request_id": null, "doc_url": "", "retryable": false}}`)
+	}
+	if _, err := f.client(t).Media.UploadBytes(context.Background(), "r-1", []byte("png"), "image/png"); err == nil {
+		t.Fatal("the PUT failure must be reported")
+	}
+	if len(f.deleted) != 0 {
+		t.Fatalf("deleted %v; the server's cleanup owns an undecidable row", f.deleted)
 	}
 }
