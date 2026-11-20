@@ -10,3 +10,7 @@ code-review/*
 .DS_Store
 .idea/
 .vscode/
+
+# Local agent tooling state
+.omc/
+.gstack/
