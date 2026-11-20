@@ -17,6 +17,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ClientUploadID`. Reads expose `ETag` and accept `WithIfNoneMatch` (`ErrNotModified`). Errors
   are typed (`*APIError` with the 39 code constants, `*TransportError`) and never carry the API
   key, a query string or a token path segment.
+- Uploads: `Media.UploadFile`, `UploadBytes` and `UploadStream` (intent, PUT, complete). The PUT
+  uses a separate redirect-refusing client with only the signed headers and an explicit
+  `Content-Length`, retries on the same URL until it expires, and deletes the pending media on a
+  terminal failure. `*UploadError` reports the stage, ids, request ids and the provider's code
+  with a fix, never the signed URL. Progress, an injectable upload client and context
+  cancellation are supported.
+- Webhooks: `VerifyWebhook` / `client.Webhooks.Verify` (constant time, 300 s tolerance) and typed
+  event decoding (`Review`, `Media`, `RatingChanged`, `AuthorErased`), checked against the
+  vendored `events.md`.
+- `examples/quickstart`, the integration suite (`make integration`, build tag `integration`)
+  against the pinned server image, captured response fixtures (`make fixtures`) decoded
+  offline, the real `integration` CI job, and the weekly `contract-drift` workflow.
 - The offline contract gate against the vendored server contract (`make contract`,
   `make vendor-contract`), and real `lint`, `test (oldstable)`, `test (stable)`, `contract` and
   `vuln` CI jobs.

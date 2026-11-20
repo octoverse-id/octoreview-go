@@ -20,6 +20,7 @@ type Client struct {
 	namespace     *namespace
 	actorID       string
 	httpClient    *http.Client
+	uploadClient  *http.Client
 	maxAttempts   int
 	maxRetryAfter time.Duration
 	userAgent     string
@@ -33,6 +34,7 @@ type Client struct {
 	Media     *MediaService
 	Authors   *AuthorsService
 	AuditLogs *AuditLogsService
+	Webhooks  *WebhooksService
 }
 
 // New returns a client for the server at baseURL (for example https://reviews.example.com),
@@ -53,6 +55,7 @@ func New(baseURL, apiKey, tenantID string, opts ...Option) (*Client, error) {
 		apiKey:        apiKey,
 		tenantID:      tenantID,
 		httpClient:    &http.Client{Timeout: 30 * time.Second},
+		uploadClient:  defaultUploadClient(),
 		maxAttempts:   3,
 		maxRetryAfter: 30 * time.Second,
 		userAgent:     "octoreview-go/" + Version,
@@ -74,6 +77,7 @@ func New(baseURL, apiKey, tenantID string, opts ...Option) (*Client, error) {
 	c.Media = &MediaService{c}
 	c.Authors = &AuthorsService{c}
 	c.AuditLogs = &AuditLogsService{c}
+	c.Webhooks = &WebhooksService{c}
 	return c, nil
 }
 
