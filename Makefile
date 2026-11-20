@@ -20,7 +20,8 @@ test: ## Run the tests with the race detector (offline; includes the contract ga
 	go test -race -count=1 ./...
 
 contract: ## Run the offline contract gate against testdata/contract (server docs/spec.md section 18)
-	go test -count=1 -run 'TestEvery|TestErrorCodes' -v ./... | grep -E '^(=== RUN|--- |ok|FAIL|PASS)'
+	@set -o pipefail; go test -count=1 -run 'TestEvery|TestErrorCodes|TestTheReadme' -v ./... | \
+		grep -E '^(=== RUN|--- |ok|FAIL|PASS)'
 
 vendor-contract: ## Refresh testdata/contract from the server (SERVER=<ref or checkout path>, default main; network)
 	@./scripts/vendor-contract.sh $(or $(SERVER),main)

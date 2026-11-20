@@ -36,6 +36,12 @@ var bodyApplication = map[string]bool{
 	opUpsertEntity.ID: true, opQueryRatings.ID: true, opCreateReview.ID: true, opEraseAuthor.ID: true,
 }
 
+// retriedConflicts are 409s an operation retries like a 503 (the contract's completeMediaUpload
+// says so): another completion holds the lease, or the upload changed and must be revalidated.
+var retriedConflicts = map[string]map[string]bool{
+	opCompleteMediaUpload.ID: {CodeCompleteInProgress: true, CodeUploadChanged: true},
+}
+
 // Operations the contract declares without namespace headers.
 var noNamespace = map[string]bool{
 	opGetHealthLive.ID: true, opGetHealthReady.ID: true, opGetApplicationSettings.ID: true,
@@ -140,7 +146,8 @@ func (c *Client) attempt(ctx context.Context, s spec, cfg callConfig, endpoint *
 		return meta, -1, decodeEnvelope(raw, s)
 	}
 	apiErr := parseError(resp, raw)
-	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusTooManyRequests {
+	if resp.StatusCode == http.StatusServiceUnavailable || resp.StatusCode == http.StatusTooManyRequests ||
+		retriedConflicts[s.op.ID][apiErr.Code] {
 		wait := time.Duration(apiErr.RetryAfter) * time.Second
 		if wait > c.maxRetryAfter {
 			return meta, -1, apiErr // longer than this client is willing to wait

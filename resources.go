@@ -117,7 +117,7 @@ type UpsertEntityParams struct {
 	ApplicationID string                      `json:"application_id"`
 	EntityType    string                      `json:"entity_type"`
 	ExternalID    string                      `json:"external_id"`
-	Metadata      map[string]any              `json:"metadata,omitempty"`
+	Metadata      map[string]any              `json:"metadata,omitzero"`
 	MaxImages     Nullable[int64]             `json:"max_images,omitzero"`
 	MaxVideos     Nullable[int64]             `json:"max_videos,omitzero"`
 	MaxImageBytes Nullable[int64]             `json:"max_image_bytes,omitzero"`
@@ -150,7 +150,7 @@ func (s *EntitiesService) Get(ctx context.Context, entityID string, opts ...Call
 
 // UpdateEntityParams changes an entity; unset fields stay as they are.
 type UpdateEntityParams struct {
-	Metadata      map[string]any  `json:"metadata,omitempty"`
+	Metadata      map[string]any  `json:"metadata,omitzero"`
 	MaxImages     Nullable[int64] `json:"max_images,omitzero"`
 	MaxVideos     Nullable[int64] `json:"max_videos,omitzero"`
 	MaxImageBytes Nullable[int64] `json:"max_image_bytes,omitzero"`
@@ -303,8 +303,8 @@ type CreateReviewParams struct {
 	Rating             int            `json:"rating"`
 	Title              *string        `json:"title,omitempty"`
 	Body               *string        `json:"body,omitempty"`
-	Metadata           map[string]any `json:"metadata,omitempty"`
-	AuthorMetadata     map[string]any `json:"author_metadata,omitempty"`
+	Metadata           map[string]any `json:"metadata,omitzero"`
+	AuthorMetadata     map[string]any `json:"author_metadata,omitzero"`
 	SourceRef          string         `json:"source_ref,omitempty"`
 	IsVerifiedPurchase *bool          `json:"is_verified_purchase,omitempty"`
 }
@@ -339,8 +339,8 @@ type UpdateReviewParams struct {
 	Rating             *int             `json:"rating,omitempty"`
 	Title              Nullable[string] `json:"title,omitzero"`
 	Body               Nullable[string] `json:"body,omitzero"`
-	Metadata           map[string]any   `json:"metadata,omitempty"`
-	AuthorMetadata     map[string]any   `json:"author_metadata,omitempty"`
+	Metadata           map[string]any   `json:"metadata,omitzero"`
+	AuthorMetadata     map[string]any   `json:"author_metadata,omitzero"`
 	IsVerifiedPurchase *bool            `json:"is_verified_purchase,omitempty"`
 }
 

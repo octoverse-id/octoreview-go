@@ -262,3 +262,39 @@ func TestNullableFields(t *testing.T) {
 		t.Fatal("null must be set but valueless")
 	}
 }
+
+func TestCompleteRetriesItsDocumentedConflicts(t *testing.T) {
+	conflict := func(code string) string {
+		return `{"error": {"code": "` + code + `", "message": "m", "details": {}, "request_id": null, "doc_url": "", "retryable": true}}`
+	}
+	s := &script{steps: []func(*http.Request) (*http.Response, error){
+		answer(409, conflict(CodeCompleteInProgress), "Retry-After", "3"),
+		answer(409, conflict(CodeUploadChanged)),
+		answer(200, `{"data": {"id": "m-1", "status": "ready"}}`),
+	}}
+	client, slept := newTestClient(t, s)
+	media, err := client.Media.Complete(context.Background(), "r-1", "m-1")
+	if err != nil || media.Status != MediaReady || len(s.reqs) != 3 {
+		t.Fatalf("got %v, %v after %d requests", media, err, len(s.reqs))
+	}
+	if (*slept)[0] != 3*time.Second {
+		t.Fatalf("slept %v, want the 3 s Retry-After first", *slept)
+	}
+	// Other operations do not retry a 409.
+	s = &script{steps: []func(*http.Request) (*http.Response, error){answer(409, conflict(CodeCompleteInProgress))}}
+	client, _ = newTestClient(t, s)
+	if _, err := client.Media.Delete(context.Background(), "r-1", "m-1"); err == nil || len(s.reqs) != 1 {
+		t.Fatalf("err %v after %d requests", err, len(s.reqs))
+	}
+}
+
+func TestAnEmptyMetadataMapIsSentToClearIt(t *testing.T) {
+	raw, _ := json.Marshal(UpdateReviewParams{Metadata: map[string]any{}, AuthorMetadata: map[string]any{}})
+	if string(raw) != `{"metadata":{},"author_metadata":{}}` {
+		t.Fatalf("got %s", raw)
+	}
+	raw, _ = json.Marshal(UpdateEntityParams{})
+	if string(raw) != `{}` {
+		t.Fatalf("an unset map must be omitted, got %s", raw)
+	}
+}
