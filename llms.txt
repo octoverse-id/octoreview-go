@@ -9,7 +9,9 @@ every target.
 ## Docs
 
 - [Agent rules](AGENTS.md): product rules, gates and the development pipeline
-- [README](README.md)
+- [README](README.md): install, usage, errors and the retry table
+- [Architecture](docs/architecture.md): layout, the offline contract gate and why models are hand-written
+- [Vendored contract](testdata/contract/SOURCE): the server commit the contract gate checks against
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
