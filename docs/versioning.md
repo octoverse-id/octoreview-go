@@ -7,6 +7,17 @@ Octoreview Go SDK follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2
 This SDK ships `0.x` releases until the server's first consumer integration passes, then
 `1.0.0`. octonomy-php's "no 0.x" rule is deliberately not copied.
 
+## Go version
+
+`go.mod` declares `go 1.24`. CI tests the two supported Go releases (`oldstable` and `stable`);
+the directive moves only when the older of them no longer covers it, in a minor release.
+
+## Server compatibility
+
+| SDK | Server contract |
+| --- | --- |
+| unreleased (`main`) | `docs/openapi.yaml` at the commit in `testdata/contract/SOURCE` (server `1.0.0-rc.1` line) |
+
 ## Rules
 
 - Pre-1.0 breaking changes need a CHANGELOG migration note with before/after code.

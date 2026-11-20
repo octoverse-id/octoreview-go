@@ -1,0 +1,16 @@
+version: "2"
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - misspell
+    - unconvert
+  exclusions:
+    rules:
+      # Test transports build fake responses that no request ever opened.
+      - path: _test\.go
+        linters: [bodyclose]
+formatters:
+  enable:
+    - gofmt
