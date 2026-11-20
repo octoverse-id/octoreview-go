@@ -34,8 +34,39 @@ server commit. The gate checks:
   own name, so a swapped field fails;
 - the README's retry table matches the operation table.
 
-Decoding response fixtures captured from the container harness, and the weekly
-`contract-drift.yml` run against the latest server release, arrive with the integration suite.
+- every event payload type (`webhooks.go`) carries the fields the vendored `events.md` documents
+  for its event types, and no undocumented ones;
+- every response fixture in `testdata/fixtures`, captured from the real server by
+  `make fixtures`, decodes with non-default values.
+
+`.github/workflows/contract-drift.yml` runs weekly. It vendors the newest server contract (the
+newest `-rc.N` tag until a final release exists), runs the gate against it and the integration
+suite against `:edge`, and opens an issue when either fails.
+
+## Uploads (`upload.go`)
+
+`UploadFile`, `UploadBytes` and `UploadStream` compose `CreateUpload`, a PUT and `Complete`.
+
+- **The PUT** uses its own `*http.Client` (`WithUploadHTTPClient`), which refuses redirects and
+  has no global timeout (the context cancels). It sends only the signed headers plus an explicit
+  `Content-Length`, so credentials never reach a storage provider.
+- **Retries:** the PUT retries up to 3 times on the same URL while it is valid, rewinding the
+  stream each time. `Complete` retries its documented conflicts through the transport.
+- **Failures:** a terminal PUT failure deletes the pending media, and the storage provider's
+  XML `<Code>` (or the local backend's JSON code) becomes `UploadError.ProviderCode` with a fix.
+
+## The integration suite
+
+`make integration` boots the pinned server image as one container: SQLite, the local backend,
+and the demo seed through the server's compose start script. It copies out
+`.octoreview-dev.env`, runs `examples/quickstart`, then runs `integration_test.go` (build tag
+`integration`) over the main flows:
+- entity media limits, two uploads and the third refused;
+- ratings by key and in batch;
+- pre-moderation, the version guard and revisions;
+- media moderation, erasure, audit logs and health.
+
+`make fixtures` also saves one response per operation into `testdata/fixtures`.
 
 ## Models are written by hand
 

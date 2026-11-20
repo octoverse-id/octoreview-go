@@ -26,6 +26,16 @@ contract: ## Run the offline contract gate against testdata/contract (server doc
 vendor-contract: ## Refresh testdata/contract from the server (SERVER=<ref or checkout path>, default main; network)
 	@./scripts/vendor-contract.sh $(or $(SERVER),main)
 
+# The server image the integration suite runs against: a published `sha-<commit>` of the server's
+# main branch, named in docs/versioning.md and moved by a bump PR.
+SERVER_IMAGE ?= ghcr.io/octoverse-id/octoreview:sha-bfa29155061e89a8f6c07496fa8b820b9e3c7440
+
+integration: ## Boot SERVER_IMAGE and run the quickstart and the integration suite (needs Docker)
+	@./scripts/integration.sh $(SERVER_IMAGE)
+
+fixtures: ## Like integration, and refresh testdata/fixtures from the real server (needs Docker)
+	@WRITE_FIXTURES=1 ./scripts/integration.sh $(SERVER_IMAGE)
+
 lint: fmt-check vet ## gofmt, go vet and golangci-lint (needs golangci-lint on PATH)
 	golangci-lint run ./...
 
@@ -46,10 +56,10 @@ placeholder-check: ## Fail while any bootstrap CI placeholder job remains
 
 check: fmt-check vet test llms-check ## Fast gate (toolchain only)
 
-release-check: check lint vuln placeholder-check ## Full pre-release gate (fails while placeholders remain)
+release-check: check lint vuln integration placeholder-check ## Full pre-release gate (fails while placeholders remain)
 
 export-rulesets: ## Export the live rulesets into .github/rulesets/ (needs gh with repo admin)
 	@./scripts/export-rulesets.sh
 
-.PHONY: help fmt fmt-check vet test contract vendor-contract lint vuln llms-check actionlint \
+.PHONY: help fmt fmt-check vet test contract vendor-contract integration fixtures lint vuln llms-check actionlint \
 	placeholder-check check release-check export-rulesets

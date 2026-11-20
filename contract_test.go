@@ -188,10 +188,8 @@ func TestEveryOperationMatchesTheSurface(t *testing.T) {
 	}
 }
 
-// pendingHelpers are surface helpers the next PR adds (uploads and webhooks, issue #4).
-var pendingHelpers = map[string]bool{
-	"uploadFile": true, "uploadBytes": true, "uploadStream": true, "verifyWebhook": true,
-}
+// pendingHelpers are surface helpers not implemented yet (none since uploads and webhooks).
+var pendingHelpers = map[string]bool{}
 
 func TestEverySurfaceMethodExists(t *testing.T) {
 	client, _ := New("https://reviews.example.com", "ocr_test", "t")

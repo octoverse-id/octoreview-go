@@ -12,6 +12,7 @@ every target.
 - [README](README.md): install, usage, errors and the retry table
 - [Architecture](docs/architecture.md): layout, the offline contract gate and why models are hand-written
 - [Vendored contract](testdata/contract/SOURCE): the server commit the contract gate checks against
+- [Quickstart](examples/quickstart/main.go): create a review, upload a photo, print the rating and the photo URL
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)

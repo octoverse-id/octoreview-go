@@ -46,6 +46,65 @@ call options override them per call (`ForApplication`, `InNamespace`, `InGlobalS
 `Version` and `MediaVersion` as the moderator saw them. A review that changed since then answers
 `octoreview.IsReviewChanged(err)`: reload it and show the new content.
 
+## Uploads
+
+```go
+media, err := client.Media.UploadFile(ctx, review.ID, "photo.jpg")            // type and size from the file
+media, err := client.Media.UploadBytes(ctx, review.ID, data, "image/png")
+media, err := client.Media.UploadStream(ctx, review.ID, file, "video/mp4", size,
+	octoreview.WithProgress(func(sent, total int64) { /* ... */ }))
+```
+
+Each runs intent, PUT and complete and returns the ready media. The PUT goes to the signed
+`upload.url` through a separate HTTP client (`WithUploadHTTPClient`) with only the headers the
+server returned and an explicit `Content-Length`. It never sends the service key, tenant or
+namespace headers, follows no redirects, and streams large videos. Failed PUTs are retried on
+the same URL until it expires, and a terminal failure deletes the pending media.
+`complete` retries on 503, `complete_in_progress` and `upload_changed`. Errors are
+`*octoreview.UploadError` with `Stage` (`intent`, `put`, `complete`), the media and review ids,
+`UploadExpiresAt`, request ids and, for a failed PUT, the storage provider's code and a fix;
+never the signed URL.
+
+Browsers can upload directly: create the intent with `Media.CreateUpload` on your server, hand
+`upload.url` and `upload.headers` to the browser, then call `Media.Complete`.
+
+## Webhooks
+
+```go
+func handler(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	event, err := octoreview.VerifyWebhook(body, r.Header.Get(octoreview.SignatureHeader), secret)
+	if err != nil {
+		http.Error(w, "invalid signature", http.StatusUnauthorized)
+		return
+	}
+	switch event.Type {
+	case octoreview.EventEntityRatingChanged:
+		rating, _ := event.RatingChanged() // replace your stored summary
+		_ = rating
+	case octoreview.EventAuthorErased:
+		erased, _ := event.AuthorErased() // delete your copies of this author's data
+		_ = erased
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+```
+
+`VerifyWebhook` (also `client.Webhooks.Verify`) checks `X-Octoreview-Signature` in constant time
+with a 300 s tolerance, then decodes the event. Deduplicate on `event.ID`: delivery is at least
+once.
+
+## Quickstart
+
+With the server's compose stack running (`make up && make dev-env` in the server repository):
+
+```sh
+go run ./examples/quickstart path/to/.octoreview-dev.env
+```
+
+It creates a review, uploads a photo, and prints the review id, the rating summary and the photo
+URL. CI runs it against the pinned server image.
+
 ## Errors
 
 API errors are `*octoreview.APIError` (`AsAPIError`, `IsCode`, `IsNotFound`): HTTP status,
@@ -75,7 +134,8 @@ honor `Retry-After` up to `WithRetry`'s bound (default 3 attempts, 30 s).
 Read [`AGENTS.md`](AGENTS.md) first (humans too): it holds the rules, gates and development
 pipeline. `make help` lists the targets; `make check` is the fast gate, and it includes the
 offline contract gate against the vendored server contract
-([`docs/architecture.md`](docs/architecture.md)).
+([`docs/architecture.md`](docs/architecture.md)). `make integration` runs the quickstart and the
+integration suite against the pinned server image (needs Docker).
 
 ## License
 

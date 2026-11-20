@@ -13,11 +13,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 if [ -d "$ref" ]; then
-  cp "$ref/docs/openapi.yaml" "$ref/docs/sdk-surface.yaml" "$work/"
+  cp "$ref/docs/openapi.yaml" "$ref/docs/sdk-surface.yaml" "$ref/docs/events.md" "$work/"
   source="octoverse-id/octoreview@$(git -C "$ref" rev-parse HEAD) (from a local checkout)"
 else
   sha=$(gh api "repos/octoverse-id/octoreview/commits/$ref" --jq .sha)
-  for file in openapi.yaml sdk-surface.yaml; do
+  for file in openapi.yaml sdk-surface.yaml events.md; do
     curl -fsSL "https://raw.githubusercontent.com/octoverse-id/octoreview/$sha/docs/$file" -o "$work/$file"
   done
   source="octoverse-id/octoreview@$sha"
@@ -41,5 +41,6 @@ for src, dst in pairs:
         json.dump(document, handle, indent=1, sort_keys=True)
         handle.write("\n")
 PY
+cp "$work/events.md" "$out/events.md"
 printf '%s\n' "$source" >"$out/SOURCE"
 echo "vendored the contract from $source into $out/"
