@@ -107,9 +107,26 @@ func IsNotFound(err error) bool { return IsCode(err, CodeNotFound) }
 // show the moderator the new content.
 func IsReviewChanged(err error) bool { return IsCode(err, CodeReviewChanged) }
 
-// ErrNotModified is returned by a read called with [WithIfNoneMatch] when the resource still has
-// that ETag (HTTP 304). Use errors.Is.
+// ErrNotModified matches a read called with [WithIfNoneMatch] when the resource still has that
+// ETag (HTTP 304). Use errors.Is; the error itself is a [*NotModifiedError].
 var ErrNotModified = errors.New("octoreview: not modified")
+
+// NotModifiedError is the 304 answer to a conditional read. It matches [ErrNotModified] with
+// errors.Is and carries the response's request id.
+type NotModifiedError struct {
+	// RequestID is the 304 response's X-Request-ID.
+	RequestID string
+}
+
+func (e *NotModifiedError) Error() string {
+	if e.RequestID == "" {
+		return ErrNotModified.Error()
+	}
+	return fmt.Sprintf("%s (request id %s)", ErrNotModified.Error(), e.RequestID)
+}
+
+// Is makes errors.Is(err, ErrNotModified) hold.
+func (e *NotModifiedError) Is(target error) bool { return target == ErrNotModified }
 
 // TransportError is a failure to reach the server or read its answer (no HTTP response, or an
 // unreadable one). Its message never includes the API key, query strings or token path segments.
@@ -117,7 +134,10 @@ type TransportError struct {
 	Method string
 	// URL is redacted: no query string and no token path segment.
 	URL string
-	Err error
+	// Err is the HTTP client's error, kept for errors.Is and errors.As (context.DeadlineExceeded,
+	// net.Error). Its own text can hold the signed URL: Error() prints it redacted, and it is
+	// never serialized (json:"-").
+	Err error `json:"-"`
 }
 
 func (e *TransportError) Error() string {

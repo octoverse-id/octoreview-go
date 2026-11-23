@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `APIError.Details` is redacted like the message: every string, recursively (a free-form
+  `details.reason` could carry a signed URL into logs).
+- A 304 returns `*NotModifiedError` with the response's `RequestID`; `errors.Is(err,
+  ErrNotModified)` still holds.
+- `TransportError.Err` is never serialized (`json:"-"`): the HTTP client's `*url.Error` holds the
+  signed upload URL, which JSON-logging an `UploadError` exposed.
+
 ### Added
 
 - The client core: `New` and `FromEnv`, client defaults with per-call overrides (application,

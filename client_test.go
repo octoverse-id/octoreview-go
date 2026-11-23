@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -147,7 +148,7 @@ func TestAKeyedIntentSendsOneGeneratedKeyAcrossRetries(t *testing.T) {
 func TestConditionalReads(t *testing.T) {
 	s := &script{steps: []func(*http.Request) (*http.Response, error){
 		answer(200, `{"data": {"id": "r-1"}}`, "ETag", `"v1"`),
-		answer(304, ``),
+		answer(304, ``, "X-Request-ID", "req-304"),
 	}}
 	client, _ := newTestClient(t, s)
 	review, err := client.Reviews.Get(context.Background(), "r-1", GetReviewParams{})
@@ -157,6 +158,10 @@ func TestConditionalReads(t *testing.T) {
 	_, err = client.Reviews.Get(context.Background(), "r-1", GetReviewParams{}, WithIfNoneMatch(review.ETag))
 	if !errors.Is(err, ErrNotModified) || s.reqs[1].Header.Get("If-None-Match") != `"v1"` {
 		t.Fatalf("err %v", err)
+	}
+	var notModified *NotModifiedError
+	if !errors.As(err, &notModified) || notModified.RequestID != "req-304" || !strings.Contains(err.Error(), "req-304") {
+		t.Fatalf("the 304's request id is lost: %v", err)
 	}
 }
 
@@ -193,6 +198,29 @@ func TestNoErrorEverCarriesTheKeyOrASignature(t *testing.T) {
 	var transportErr *TransportError
 	if !errors.As(err, &transportErr) {
 		t.Fatalf("want a TransportError, got %T", err)
+	}
+}
+
+func TestErrorDetailsAreRedacted(t *testing.T) {
+	// A free-form details field (details.reason) can carry a signed URL, nested or not.
+	body := `{"error": {"code": "media_rejected", "message": "rejected", "request_id": "r",
+		"details": {"reason": "fetch https://bucket.s3.example/k?X-Amz-Signature=abc", "nested": [{"key": "` + apiKey + `"}],
+		"current_version": 2}, "doc_url": "", "retryable": false}}`
+	s := &script{steps: []func(*http.Request) (*http.Response, error){answer(409, body)}}
+	client, _ := newTestClient(t, s)
+	_, err := client.Reviews.Create(context.Background(), CreateReviewParams{AuthorID: "u", Rating: 1})
+	apiErr, ok := AsAPIError(err)
+	if !ok {
+		t.Fatalf("want an APIError, got %v", err)
+	}
+	encoded, _ := json.Marshal(apiErr.Details)
+	for _, secret := range []string{apiKey, "X-Amz-Signature=abc"} {
+		if strings.Contains(string(encoded)+fmt.Sprintf("%+v", apiErr), secret) {
+			t.Fatalf("the details leak %q: %s", secret, encoded)
+		}
+	}
+	if apiErr.Details["current_version"] != float64(2) {
+		t.Fatalf("redaction must keep non-string values: %v", apiErr.Details)
 	}
 }
 
