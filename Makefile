@@ -13,8 +13,9 @@ fmt: ## Format the code with gofmt
 fmt-check: ## Fail when a file is not gofmt-clean
 	@out=$$(gofmt -l .); if [ -n "$$out" ]; then echo "gofmt needs to run on:"; echo "$$out"; exit 1; fi
 
-vet: ## Run go vet
+vet: ## Run go vet (including the integration suite's build tag)
 	go vet ./...
+	go vet -tags integration ./...
 
 test: ## Run the tests with the race detector (offline; includes the contract gate)
 	go test -race -count=1 ./...
