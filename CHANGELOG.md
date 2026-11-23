@@ -18,6 +18,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `make integration` (and CI's `integration` job) also runs the quickstart and the suite with
+  media on the RustFS S3 emulator, as the server's compose `s3` profile does.
 - The client core: `New` and `FromEnv`, client defaults with per-call overrides (application,
   namespace, explicit global scope, `IncludeGlobal`), `User-Agent: octoreview-go/<version>`, and
   every REST operation of the server's `docs/sdk-surface.yaml` as
