@@ -243,3 +243,27 @@ func TestAFailedPutKeepsTheRowWhenCompleteCannotTell(t *testing.T) {
 		t.Fatalf("deleted %v; the server's cleanup owns an undecidable row", f.deleted)
 	}
 }
+
+func TestAFailedPutNeverSerializesTheSignedURL(t *testing.T) {
+	// http.Client wraps a transport failure in *url.Error, whose exported URL field is the signed
+	// URL. A structured logger may serialize the error value instead of calling Error().
+	f := newFakeServer(t)
+	f.completeAnswer = uploadNotFound
+	broken := &http.Client{Transport: &script{steps: []func(*http.Request) (*http.Response, error){
+		fail(errors.New("connection reset")), fail(errors.New("connection reset")), fail(errors.New("connection reset")),
+	}}}
+	_, err := f.client(t, WithUploadHTTPClient(broken)).Media.UploadBytes(context.Background(), "r-1", []byte("png"), "image/png")
+	var uploadErr *UploadError
+	if !errors.As(err, &uploadErr) || uploadErr.Stage != StagePut {
+		t.Fatalf("want a put-stage UploadError, got %v", err)
+	}
+	encoded, marshalErr := json.Marshal(uploadErr)
+	if marshalErr != nil {
+		t.Fatal(marshalErr)
+	}
+	for _, secret := range []string{"secret-sig", "X-Amz-Signature", apiKey} {
+		if strings.Contains(string(encoded)+err.Error(), secret) {
+			t.Fatalf("the upload error leaks %q: %s", secret, encoded)
+		}
+	}
+}

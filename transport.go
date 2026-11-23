@@ -141,7 +141,7 @@ func (c *Client) attempt(ctx context.Context, s spec, cfg callConfig, endpoint *
 	meta := ResponseMeta{ETag: resp.Header.Get("ETag"), RequestID: resp.Header.Get("X-Request-ID")}
 	switch {
 	case resp.StatusCode == http.StatusNotModified:
-		return meta, -1, ErrNotModified
+		return meta, -1, &NotModifiedError{RequestID: meta.RequestID}
 	case resp.StatusCode >= 200 && resp.StatusCode < 300, resp.StatusCode == s.acceptStatus:
 		return meta, -1, decodeEnvelope(raw, s)
 	}
@@ -279,7 +279,8 @@ func parseError(resp *http.Response, raw []byte) *APIError {
 	}
 	apiErr.Code = body.Error.Code
 	apiErr.Message = redactText(body.Error.Message)
-	apiErr.Details = body.Error.Details
+	// Redacted too: a free-form field (details.reason) can carry a signed URL.
+	apiErr.Details, _ = redactValue(body.Error.Details).(map[string]any)
 	apiErr.DocURL = body.Error.DocURL
 	apiErr.Retryable = body.Error.Retryable
 	if body.Error.RequestID != nil && *body.Error.RequestID != "" {
@@ -316,6 +317,27 @@ var (
 )
 
 // redactText removes query strings (signatures), token path segments and service keys.
+// redactValue copies a decoded JSON value with every string redacted, for structured error fields.
+func redactValue(value any) any {
+	switch v := value.(type) {
+	case string:
+		return redactText(v)
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = redactValue(item)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, item := range v {
+			out[key] = redactValue(item)
+		}
+		return out
+	}
+	return value
+}
+
 func redactText(text string) string {
 	text = queryInURL.ReplaceAllString(text, "$1?<redacted>")
 	text = tokenSegment.ReplaceAllString(text, "/$1/<redacted>")
