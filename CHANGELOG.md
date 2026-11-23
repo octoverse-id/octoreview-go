@@ -17,6 +17,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ClientUploadID`. Reads expose `ETag` and accept `WithIfNoneMatch` (`ErrNotModified`). Errors
   are typed (`*APIError` with the 39 code constants, `*TransportError`) and never carry the API
   key, a query string or a token path segment.
+- The contract gate checks the type each method decodes into against the schema the contract
+  names for that operation's response, both directions (server spec section 18).
 - Uploads: `Media.UploadFile`, `UploadBytes` and `UploadStream` (intent, PUT, complete). The PUT
   uses a separate redirect-refusing client with only the signed headers and an explicit
   `Content-Length`, retries on the same URL until it expires, and deletes the pending media on a

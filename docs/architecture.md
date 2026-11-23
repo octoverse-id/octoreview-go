@@ -32,8 +32,9 @@ server commit. The gate checks:
 - a recording transport calls every operation with self-describing values (`review_id-13`,
   `entity_type-3`): method, path, credentials, declared headers only, and each value under its
   own name, so a swapped field fails;
-- the README's retry table matches the operation table.
-
+- the README's retry table matches the operation table;
+- the type each method decodes into declares exactly the properties of the schema the contract
+  names for that operation's response (`data`, or each item of a list; `schema_test.go`);
 - every event payload type (`webhooks.go`) carries the fields the vendored `events.md` documents
   for its event types, and no undocumented ones;
 - every response fixture in `testdata/fixtures`, captured from the real server by

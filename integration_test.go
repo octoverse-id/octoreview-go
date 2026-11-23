@@ -67,7 +67,7 @@ func integrationClient(t *testing.T) *Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	values := map[string]string{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -158,11 +158,14 @@ func TestIntegrationTheMainFlows(t *testing.T) {
 	}
 
 	// Pre-moderation: a new review waits; the version guard protects publishing.
+	// Put replaces every setting, so both calls send them all: only the moderation mode changes,
+	// and the original settings come back afterwards.
 	app := must(client.Settings.Get(ctx, ""))
-	must(client.Settings.Put(ctx, "", PutSettingsParams{ModerationMode: Ptr(ModerationPreModeration)}))
-	defer func() {
-		_, _ = client.Settings.Put(context.Background(), "", PutSettingsParams{ModerationMode: app.ModerationMode})
-	}()
+	original := settingsOf(app)
+	preModeration := original
+	preModeration.ModerationMode = Ptr(ModerationPreModeration)
+	must(client.Settings.Put(ctx, "", preModeration))
+	defer func() { _, _ = client.Settings.Put(context.Background(), "", original) }()
 	pending := must(client.Reviews.Create(ctx, CreateReviewParams{EntityID: entity.ID, AuthorID: run + "-b", Rating: 2}))
 	if pending.Status != StatusPending {
 		t.Fatalf("pre-moderation left the review %s", pending.Status)
@@ -220,4 +223,17 @@ func TestIntegrationTheMainFlows(t *testing.T) {
 	if listedEntities.Pagination.Count != 1 || deactivated.IsActive || updated.MediaPolicy.MaxImages != nil {
 		t.Fatalf("entities %+v %+v", listedEntities, deactivated)
 	}
+}
+
+// settingsOf turns read settings into the Put parameters that keep them as they are.
+func settingsOf(app *ApplicationSettings) PutSettingsParams {
+	params := PutSettingsParams{
+		MaxImages: app.MaxImages, MaxVideos: app.MaxVideos, MaxImageBytes: app.MaxImageBytes,
+		MaxVideoBytes: app.MaxVideoBytes, ModerationMode: app.ModerationMode, MaxStorageBytes: app.MaxStorageBytes,
+	}
+	if app.AllowedContentTypes != nil {
+		types := append([]string(nil), app.AllowedContentTypes...)
+		params.AllowedContentTypes = &types
+	}
+	return params
 }
