@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- `Media.List` pages like every other list: `ListMediaParams.Page` sends `limit`/`offset`, and it
+  returns `*List[Media]` (`Data` plus `Pagination`) instead of `[]Media`. The server's
+  `listReviewMedia` answers the `{data, pagination}` envelope from
+  `sha-c324de22fab81afd0770b283f1447d2eeb6376e9`, which `SERVER_IMAGE` now pins, and the vendored
+  contract and fixtures come from that commit.
+
 ### Fixed
 
 - `APIError.Details` is redacted like the message: every string, recursively (a free-form

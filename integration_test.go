@@ -153,8 +153,12 @@ func TestIntegrationTheMainFlows(t *testing.T) {
 		t.Fatalf("list %+v", listed)
 	}
 	media := must(client.Media.List(ctx, review.ID, ListMediaParams{}))
-	if len(media) != 2 {
-		t.Fatalf("media %d", len(media))
+	if len(media.Data) != 2 || media.Pagination.Count != 2 {
+		t.Fatalf("media %+v", media)
+	}
+	second := must(client.Media.List(ctx, review.ID, ListMediaParams{Page: Page{Limit: 1, Offset: 1}}))
+	if len(second.Data) != 1 || second.Data[0].ID != media.Data[1].ID || second.Pagination.Limit != 1 {
+		t.Fatalf("second page %+v", second)
 	}
 
 	// Pre-moderation: a new review waits; the version guard protects publishing.

@@ -81,7 +81,7 @@ var (
 		[]string{"review_id", "revision_id", "application_id"}}
 
 	opListReviewMedia = operation{"listReviewMedia", "GET", "/reviews/{review_id}/media", retrySafe, "Media.List",
-		[]string{"review_id", "application_id", "include_global", "author_id", "include_unpublished"}}
+		[]string{"review_id", "application_id", "include_global", "author_id", "include_unpublished", "limit", "offset"}}
 	opCreateMediaUpload = operation{"createMediaUpload", "POST", "/reviews/{review_id}/media", retryKeyed, "Media.CreateUpload",
 		[]string{"review_id", "kind", "content_type", "size_bytes", "application_id", "client_upload_id", "position", "width", "height", "duration_seconds"}}
 	opCompleteMediaUpload = operation{"completeMediaUpload", "POST", "/reviews/{review_id}/media/{media_id}/complete", retryIdempotent, "Media.Complete",
