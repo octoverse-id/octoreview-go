@@ -8,7 +8,7 @@ go get github.com/octoverse-id/octoreview-go
 ```
 
 Dependency-free (`net/http` only), Go 1.24 or newer. No release yet: `v0.1.0` ships with the
-server's `1.0.0-rc.1` ([`docs/versioning.md`](docs/versioning.md)).
+server's first `1.0.0` release candidate ([`docs/versioning.md`](docs/versioning.md)).
 
 ## Usage
 

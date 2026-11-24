@@ -344,7 +344,7 @@ func everyCall(ctx context.Context, c *Client) map[string]func() error {
 			return err
 		},
 		"listReviewMedia": func() error {
-			_, err := c.Media.List(ctx, "review_id-22", ListMediaParams{AuthorID: "author_id-22", IncludeUnpublished: ptr(true)}, IncludeGlobal())
+			_, err := c.Media.List(ctx, "review_id-22", ListMediaParams{AuthorID: "author_id-22", IncludeUnpublished: ptr(true), Page: Page{Limit: 5, Offset: 10}}, IncludeGlobal())
 			return err
 		},
 		"createMediaUpload": func() error {

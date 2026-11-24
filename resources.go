@@ -417,22 +417,22 @@ func reviewMeta(r *Review, m ResponseMeta) { r.ResponseMeta = m }
 // MediaService uploads and moderates review images and videos.
 type MediaService struct{ c *Client }
 
-// ListMediaParams reads a review's media on the author path or as a moderator.
+// ListMediaParams reads a review's media on the author path or as a moderator. Page pages the
+// list (server default 20, at most 100 per page).
 type ListMediaParams struct {
 	AuthorID           string
 	IncludeUnpublished *bool
+	Page               Page
 }
 
-// List returns every media item of a review (not capped like the review's embedded list).
-func (s *MediaService) List(ctx context.Context, reviewID string, params ListMediaParams, opts ...CallOption) ([]Media, error) {
+// List returns one page of a review's media in position order. Unlike the review's embedded
+// list it is not capped: Pagination.Count is the total, and Page.Offset walks the rest.
+func (s *MediaService) List(ctx context.Context, reviewID string, params ListMediaParams, opts ...CallOption) (*List[Media], error) {
 	q := query{}
 	q.str("author_id", params.AuthorID)
 	q.boolean("include_unpublished", params.IncludeUnpublished)
-	var media []Media
-	if _, err := s.c.call(ctx, spec{op: opListReviewMedia, pathValues: []string{reviewID}, query: url.Values(q), out: &media}, s.c.config(opts)); err != nil {
-		return nil, err
-	}
-	return media, nil
+	q.page(params.Page)
+	return list[Media](ctx, s.c, spec{op: opListReviewMedia, pathValues: []string{reviewID}, query: url.Values(q)}, s.c.config(opts))
 }
 
 // CreateUploadParams declares one upload. ClientUploadID makes the call retry-safe; the SDK
