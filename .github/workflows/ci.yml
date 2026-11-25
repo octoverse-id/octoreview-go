@@ -32,6 +32,8 @@ jobs:
           "$(go env GOPATH)/bin/actionlint" -color
       - name: Check llms.txt links
         run: make llms-check
+      - name: Prove the release scripts (version-check, check-release-merge, release-notes)
+        run: make release-tooling-check
       - name: Set up Go
         uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
