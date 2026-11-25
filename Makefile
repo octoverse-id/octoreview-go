@@ -49,6 +49,12 @@ llms-check: ## Fail when llms.txt links a missing local path (and prove the chec
 	@./scripts/check-llms-txt.sh
 	@./scripts/check-llms-txt-test.sh
 
+version-check: ## Fail unless version.go and a CHANGELOG heading name one releasable version (a release PR's gate)
+	@./scripts/version-check.sh
+
+release-tooling-check: ## Prove the release scripts (version-check, check-release-merge, release-notes) pass and fail as documented
+	@./scripts/release-tooling-test.sh
+
 actionlint: ## Lint GitHub Actions workflows (needs actionlint on PATH)
 	@actionlint -color
 
@@ -57,7 +63,7 @@ placeholder-check: ## Fail while any bootstrap CI placeholder job remains
 		echo "placeholder-check: bootstrap placeholder jobs remain; replace them before a release" >&2; exit 1; \
 	fi; echo "placeholder-check OK"
 
-check: fmt-check vet test llms-check ## Fast gate (toolchain only)
+check: fmt-check vet test llms-check release-tooling-check ## Fast gate (toolchain only)
 
 release-check: check lint vuln integration placeholder-check ## Full pre-release gate (fails while placeholders remain)
 
@@ -65,4 +71,5 @@ export-rulesets: ## Export the live rulesets into .github/rulesets/ (needs gh wi
 	@./scripts/export-rulesets.sh
 
 .PHONY: help fmt fmt-check vet test contract vendor-contract integration fixtures lint vuln llms-check actionlint \
+	version-check release-tooling-check \
 	placeholder-check check release-check export-rulesets
