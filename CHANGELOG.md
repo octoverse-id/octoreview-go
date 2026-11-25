@@ -29,6 +29,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `.github/workflows/publish.yml` publishes a `vX.Y.Z` or `vX.Y.Z-rc.N` tag: it refuses a commit
+  that is not a green commit on `main`, stamps that disagree with the tag (`make version-check`)
+  and a commit that is not the release merge (`scripts/check-release-merge.sh`), then makes the
+  Go module proxy fetch the tag and creates the GitHub release from the CHANGELOG section. A
+  `workflow_dispatch` from `main` rehearses it. `make check` proves the release scripts
+  (`make release-tooling-check`).
 - `make integration` (and CI's `integration` job) also runs the quickstart and the suite with
   media on the RustFS S3 emulator, as the server's compose `s3` profile does.
 - The client core: `New` and `FromEnv`, client defaults with per-call overrides (application,
