@@ -148,6 +148,14 @@ func TestIntegrationTheMainFlows(t *testing.T) {
 	if summary.RatingCount != 1 || len(batch) != 2 || batch[1].EntityID != nil || forEntity.RatingCount != 1 {
 		t.Fatalf("ratings %+v %+v %+v", summary, batch, forEntity)
 	}
+	// The server answers conditional reads from 1.0.0-rc.4 (its spec 5.3). The rating summary's
+	// ETag does not carry the signing epoch, so an unchanged summary always answers 304.
+	if forEntity.ETag == "" {
+		t.Fatal("the rating summary carries no ETag")
+	}
+	if _, err := client.Ratings.ForEntity(ctx, entity.ID, WithIfNoneMatch(forEntity.ETag)); !errors.Is(err, ErrNotModified) {
+		t.Fatalf("a conditional rating read: %v", err)
+	}
 	listed := must(client.Reviews.List(ctx, ListReviewsParams{EntityID: entity.ID, HasMedia: Ptr(true)}))
 	if listed.Pagination.Count != 1 || len(listed.Data[0].Media) != 2 {
 		t.Fatalf("list %+v", listed)
